@@ -27,15 +27,12 @@ execute "link macvim into place" do
   not_if { File.symlink?("/Applications/MacVim.app") }
 end
 
-execute "test to see if macvim link worked" do
-  command "test -e /Applications/MacVim.app"
-end
-
 directory "remove pre-existing vim configuration" do
   path node["vim_home"]
   action :delete
   recursive true
   only_if { File.directory?(node["vim_home"]) }
+  not_if { File.directory?("#{node["vim_home"]}/.git") }
 end
 
 git node["vim_home"] do
@@ -45,10 +42,6 @@ git node["vim_home"] do
   action :sync
   user WS_USER
   enable_submodules true
-end
-
-execute "verify checkout happened" do
-  command "test -e #{node["vim_home"]}"
 end
 
 %w{vimrc gvimrc}.each do |vimrc|
@@ -63,15 +56,7 @@ execute "compile command-t" do
   command "rvm use system; ruby extconf.rb && make clean && make"
   cwd "#{node["vim_home"]}/bundle/command-t/ruby/command-t"
   user WS_USER
-  only_if "test -d #{node["vim_home"]}/bundle/command-t/ruby/command-t"
-end
-
-execute "verify that command-t is correctly compiled" do
-  command %{test "`otool -l #{node["vim_home"]}/bundle/command-t/ruby/command-t/ext.bundle | grep libruby`" = "`otool -l /usr/local/bin/vim | grep libruby`"}
-end
-
-execute "verify that command-t is correctly compiled for macvim" do
-  command %{test "`otool -l #{node["vim_home"]}/bundle/command-t/ruby/command-t/ext.bundle | grep libruby`" = "`otool -l /Applications/MacVim.app/Contents/MacOS/Vim | grep libruby`"}
+  not_if "otool -l #{node["vim_home"]}/bundle/command-t/ruby/command-t/ext.bundle | grep libruby"
 end
 
 file "#{WS_HOME}/.vimrc.local" do
